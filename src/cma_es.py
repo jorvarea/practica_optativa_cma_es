@@ -1,6 +1,7 @@
-from typing import Callable
+from typing import Any, Callable, Dict
 
 import numpy as np
+from scipy.stats import qmc
 
 
 class CMAES:
@@ -55,6 +56,12 @@ class CMAES:
         self.sampler_type = sampler_type
         self.generation = 0
 
+        # Initialize samplers for low-discrepancy sequences
+        if sampler_type == 'sobol':
+            self.sobol_sampler = qmc.Sobol(d=self.n, scramble=True)
+        elif sampler_type == 'halton':
+            self.halton_sampler = qmc.Halton(d=self.n, scramble=True)
+
         # Statistics
         self.best_fitness = float('inf')
         self.best_solution = None
@@ -85,14 +92,62 @@ class CMAES:
         return self.mean + self.sigma * (z @ (self.B * self.D).T)
 
     def _sample_sobol(self) -> np.ndarray:
-        """Sobol sequence sampling (placeholder - will implement later)."""
-        # For now, fallback to Gaussian
-        return self._sample_gaussian()
+        """Sobol sequence sampling with Box-Muller transformation."""
+        # Generate uniform samples from Sobol sequence
+        uniform_samples = self.sobol_sampler.random(self.lambda_)
+
+        # Box-Muller transformation to get Gaussian samples
+        z = self._box_muller_transform(uniform_samples)
+
+        # Apply CMA-ES transformation
+        return self.mean + self.sigma * (z @ (self.B * self.D).T)
 
     def _sample_halton(self) -> np.ndarray:
-        """Halton sequence sampling (placeholder - will implement later)."""
-        # For now, fallback to Gaussian
-        return self._sample_gaussian()
+        """Halton sequence sampling with Box-Muller transformation."""
+        # Generate uniform samples from Halton sequence
+        uniform_samples = self.halton_sampler.random(self.lambda_)
+
+        # Box-Muller transformation to get Gaussian samples
+        z = self._box_muller_transform(uniform_samples)
+
+        # Apply CMA-ES transformation
+        return self.mean + self.sigma * (z @ (self.B * self.D).T)
+
+    def _box_muller_transform(self, uniform_samples: np.ndarray) -> np.ndarray:
+        """Transform uniform samples to Gaussian using Box-Muller method."""
+        n_samples, n_dims = uniform_samples.shape
+
+        # Ensure even number of dimensions for Box-Muller pairs
+        if n_dims % 2 == 1:
+            # Add extra dimension and remove later
+            uniform_samples = np.column_stack([uniform_samples, uniform_samples[:, 0]])
+            n_dims += 1
+
+        # Reshape for pair processing
+        pairs = uniform_samples.reshape(n_samples, n_dims // 2, 2)
+
+        # Box-Muller transformation
+        u1, u2 = pairs[:, :, 0], pairs[:, :, 1]
+
+        # Avoid numerical issues
+        u1 = np.clip(u1, 1e-10, 1 - 1e-10)
+        u2 = np.clip(u2, 1e-10, 1 - 1e-10)
+
+        # Generate Gaussian pairs
+        r = np.sqrt(-2 * np.log(u1))
+        theta = 2 * np.pi * u2
+
+        z1 = r * np.cos(theta)
+        z2 = r * np.sin(theta)
+
+        # Recombine pairs
+        z = np.stack([z1, z2], axis=2).reshape(n_samples, n_dims)
+
+        # Remove extra dimension if added
+        if self.n % 2 == 1:
+            z = z[:, :-1]
+
+        return z
 
     def optimize(self,
                  objective_func: Callable[[np.ndarray], float],
