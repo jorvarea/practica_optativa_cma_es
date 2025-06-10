@@ -58,47 +58,54 @@ Para obtener la **máxima puntuación (1.0 punto)** según la rúbrica del profe
 
 ### B. Variantes de Sampling
 - [x] **Gaussiano clásico**: Implementación base con numpy.random.multivariate_normal
-- [ ] **Secuencia de Sobol**: Usar scipy.stats.qmc.Sobol + transformación Box-Muller
-- [ ] **Tercera técnica**: Implementar Halton/Hammersley/LHS + transformación
+- [x] **Secuencia de Sobol**: Usar scipy.stats.qmc.Sobol + transformación Box-Muller
+- [x] **Secuencia de Halton**: Implementar Halton + transformación Box-Muller
 
 ### C. Funciones de Optimización
-- [x] Implementar las 3 funciones básicas (Sphere, Rosenbrock, Rastrigin)
+- [x] Implementar las 12 funciones benchmark completas
 - [x] Definir dominios y dimensiones para cada función
 - [x] Valores óptimos conocidos para cada problema
 - [x] Funciones de evaluación eficientes
-- [ ] Implementar las 9 funciones restantes
+- [x] Funciones 2D especiales (Beale, Booth, Matyas) implementadas
 
 ### D. Framework Experimental
 - [x] Integración básica CMA-ES + funciones verificada
-- [ ] Sistema de configuración experimental
-- [ ] Múltiples ejecuciones con diferentes semillas
-- [ ] Recolección de métricas:
-  - Número de evaluaciones hasta convergencia
-  - Mejor fitness encontrado
-  - Tiempo de ejecución
-  - Estadísticas de convergencia
+- [x] Sistema de configuración experimental
+- [x] Múltiples ejecuciones con diferentes semillas
+- [x] Recolección de métricas completas:
+  - [x] Número de evaluaciones hasta convergencia
+  - [x] Mejor fitness encontrado
+  - [x] Tiempo de ejecución
+  - [x] Estadísticas de convergencia
+  - [x] Distancia al óptimo global
+- [x] Guardado/carga de resultados en JSON
+- [x] Conversión a DataFrame para análisis
+- [x] Estadísticas resumidas automáticas
 
 ---
 
 ## 📊 Análisis y Evaluación
 
 ### Métricas a Recopilar
-- [ ] **Velocidad de convergencia**: Evaluaciones hasta alcanzar tolerancia
-- [ ] **Robustez**: Desviación estándar entre ejecuciones
-- [ ] **Coste computacional**: Tiempo de ejecución
-- [ ] **Calidad de solución**: Distancia al óptimo global
+- [x] **Velocidad de convergencia**: Evaluaciones hasta alcanzar tolerancia
+- [x] **Robustez**: Desviación estándar entre ejecuciones
+- [x] **Coste computacional**: Tiempo de ejecución
+- [x] **Calidad de solución**: Distancia al óptimo global
 
 ### Análisis Estadístico
-- [ ] Pruebas de normalidad (Shapiro-Wilk)
-- [ ] Test de Wilcoxon signed-rank para comparaciones pareadas
-- [ ] Test de Kruskal-Wallis para comparación múltiple
-- [ ] Análisis de significancia estadística (p-value < 0.05)
+- [x] Pruebas de normalidad (Shapiro-Wilk/Kolmogorov-Smirnov)
+- [x] Test de Wilcoxon signed-rank para comparaciones pareadas
+- [x] Test de Mann-Whitney U para muestras independientes
+- [x] Test de Kruskal-Wallis para comparación múltiple
+- [x] Análisis de significancia estadística (p-value < 0.05)
+- [x] Cálculo de effect size (Cohen's d)
+- [x] Interpretación automática de resultados
 
 ### Visualizaciones
-- [ ] Curvas de convergencia por función y método
-- [ ] Boxplots comparativos de rendimiento
-- [ ] Heatmaps de rendimiento por función/método
-- [ ] Gráficos de distribución de poblaciones
+- [x] Curvas de convergencia por función y método
+- [x] Boxplots comparativos de rendimiento
+- [x] Heatmaps de rendimiento por función/método
+- [x] Gráficos de distribución de poblaciones
 
 ---
 

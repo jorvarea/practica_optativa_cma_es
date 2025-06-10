@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 
 
@@ -11,43 +9,30 @@ class BenchmarkFunction:
         self.name = self.__class__.__name__
 
     def __call__(self, x: np.ndarray) -> float:
-        """Evaluate function at point x."""
-        if len(x) != self.dimension:
-            raise ValueError(f"Expected {self.dimension}D input, got {len(x)}D")
         return self.evaluate(x)
 
     def evaluate(self, x: np.ndarray) -> float:
-        """Override this method in subclasses."""
         raise NotImplementedError
 
     @property
-    def bounds(self) -> Tuple[float, float]:
-        """Return (lower_bound, upper_bound) for variables."""
+    def bounds(self) -> tuple[float, float]:
         raise NotImplementedError
 
     @property
     def global_optimum(self) -> float:
-        """Return global optimum value."""
         raise NotImplementedError
 
     @property
     def global_optimum_location(self) -> np.ndarray:
-        """Return location of global optimum."""
         raise NotImplementedError
 
 
 class Sphere(BenchmarkFunction):
-    """Sphere function: f(x) = sum(x_i^2)
-
-    Global minimum: f(0, ..., 0) = 0
-    Domain: [-5.12, 5.12]^n
-    """
-
     def evaluate(self, x: np.ndarray) -> float:
         return np.sum(x**2)
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-5.12, 5.12)
 
     @property
@@ -70,7 +55,7 @@ class Rosenbrock(BenchmarkFunction):
         return np.sum(100 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-2.048, 2.048)
 
     @property
@@ -97,7 +82,7 @@ class Rastrigin(BenchmarkFunction):
         return self.A * self.dimension + np.sum(x**2 - self.A * np.cos(2 * np.pi * x))
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-5.12, 5.12)
 
     @property
@@ -128,7 +113,7 @@ class Ackley(BenchmarkFunction):
         return term1 + term2 + self.a + np.e
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-32.768, 32.768)
 
     @property
@@ -151,7 +136,7 @@ class Schwefel(BenchmarkFunction):
         return 418.9829 * self.dimension - np.sum(x * np.sin(np.sqrt(np.abs(x))))
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-500.0, 500.0)
 
     @property
@@ -176,7 +161,7 @@ class Griewank(BenchmarkFunction):
         return sum_term - prod_term + 1
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-600.0, 600.0)
 
     @property
@@ -205,7 +190,7 @@ class Levy(BenchmarkFunction):
         return term1 + term2 + term3
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-10.0, 10.0)
 
     @property
@@ -230,7 +215,7 @@ class Zakharov(BenchmarkFunction):
         return sum1 + sum2**2 + sum2**4
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-5.0, 10.0)
 
     @property
@@ -258,24 +243,15 @@ class Michalewicz(BenchmarkFunction):
         return -np.sum(np.sin(x) * np.sin(i * x**2 / np.pi)**(2 * self.m))
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (0.0, np.pi)
 
     @property
     def global_optimum(self) -> float:
-        # Approximate values for common dimensions
-        if self.dimension == 2:
-            return -1.8013
-        elif self.dimension == 5:
-            return -4.687658
-        elif self.dimension == 10:
-            return -9.66015
-        else:
-            return -self.dimension * 0.966  # Rough approximation
+        return {2: -1.8013, 5: -4.687658, 10: -9.66015}.get(self.dimension, -self.dimension * 0.966)
 
     @property
     def global_optimum_location(self) -> np.ndarray:
-        # Approximation - exact values are complex
         return np.full(self.dimension, np.pi / 2)
 
 
@@ -288,9 +264,7 @@ class Beale(BenchmarkFunction):
     """
 
     def __init__(self, dimension: int = 2):
-        if dimension != 2:
-            raise ValueError("Beale function is only defined for 2 dimensions")
-        super().__init__(dimension)
+        super().__init__(2)
 
     def evaluate(self, x: np.ndarray) -> float:
         x1, x2 = x[0], x[1]
@@ -300,7 +274,7 @@ class Beale(BenchmarkFunction):
         return term1 + term2 + term3
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-4.5, 4.5)
 
     @property
@@ -321,16 +295,14 @@ class Booth(BenchmarkFunction):
     """
 
     def __init__(self, dimension: int = 2):
-        if dimension != 2:
-            raise ValueError("Booth function is only defined for 2 dimensions")
-        super().__init__(dimension)
+        super().__init__(2)
 
     def evaluate(self, x: np.ndarray) -> float:
         x1, x2 = x[0], x[1]
         return (x1 + 2 * x2 - 7)**2 + (2 * x1 + x2 - 5)**2
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-10.0, 10.0)
 
     @property
@@ -351,16 +323,14 @@ class Matyas(BenchmarkFunction):
     """
 
     def __init__(self, dimension: int = 2):
-        if dimension != 2:
-            raise ValueError("Matyas function is only defined for 2 dimensions")
-        super().__init__(dimension)
+        super().__init__(2)
 
     def evaluate(self, x: np.ndarray) -> float:
         x1, x2 = x[0], x[1]
         return 0.26 * (x1**2 + x2**2) - 0.48 * x1 * x2
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         return (-10.0, 10.0)
 
     @property
@@ -370,8 +340,6 @@ class Matyas(BenchmarkFunction):
     @property
     def global_optimum_location(self) -> np.ndarray:
         return np.zeros(self.dimension)
-
-# Factory function for easy creation
 
 
 def get_function(name: str, dimension: int) -> BenchmarkFunction:

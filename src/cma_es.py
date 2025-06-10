@@ -1,5 +1,3 @@
-from typing import Any, Callable, Dict
-
 import numpy as np
 from scipy.stats import qmc
 
@@ -115,39 +113,22 @@ class CMAES:
 
     def _box_muller_transform(self, uniform_samples: np.ndarray) -> np.ndarray:
         """Transform uniform samples to Gaussian using Box-Muller method."""
-        n_samples, n_dims = uniform_samples.shape
+        n_samples, dim = uniform_samples.shape
 
-        # Ensure even number of dimensions for Box-Muller pairs
-        if n_dims % 2 == 1:
-            # Add extra dimension and remove later
-            uniform_samples = np.column_stack([uniform_samples, uniform_samples[:, 0]])
-            n_dims += 1
+        if dim % 2 == 1:
+            extra_samples = np.random.rand(n_samples, 1)
+            uniform_samples = np.column_stack([uniform_samples, extra_samples])
+            dim += 1
 
-        # Reshape for pair processing
-        pairs = uniform_samples.reshape(n_samples, n_dims // 2, 2)
+        u1 = uniform_samples[:, ::2]
+        u2 = uniform_samples[:, 1::2]
 
-        # Box-Muller transformation
-        u1, u2 = pairs[:, :, 0], pairs[:, :, 1]
+        z1 = np.sqrt(-2 * np.log(u1)) * np.cos(2 * np.pi * u2)
+        z2 = np.sqrt(-2 * np.log(u1)) * np.sin(2 * np.pi * u2)
 
-        # Avoid numerical issues
-        u1 = np.clip(u1, 1e-10, 1 - 1e-10)
-        u2 = np.clip(u2, 1e-10, 1 - 1e-10)
+        gaussian_samples = np.column_stack([z1, z2])
 
-        # Generate Gaussian pairs
-        r = np.sqrt(-2 * np.log(u1))
-        theta = 2 * np.pi * u2
-
-        z1 = r * np.cos(theta)
-        z2 = r * np.sin(theta)
-
-        # Recombine pairs
-        z = np.stack([z1, z2], axis=2).reshape(n_samples, n_dims)
-
-        # Remove extra dimension if added
-        if self.n % 2 == 1:
-            z = z[:, :-1]
-
-        return z
+        return gaussian_samples[:, :self.n]
 
     def optimize(self,
                  objective_func: Callable[[np.ndarray], float],
@@ -170,52 +151,52 @@ class CMAES:
             max_evals = 10000 * self.n
 
         evaluations = 0
+        converged = False
 
-        while evaluations < max_evals:
+        while evaluations < max_evals and not converged:
             # Sample new population
             population = self._sample_population()
 
             # Evaluate population
-            fitness = np.array([objective_func(x) for x in population])
+            fitness_values = np.array([objective_func(x) for x in population])
             evaluations += self.lambda_
 
             # Sort by fitness
-            indices = np.argsort(fitness)
-            population = population[indices]
-            fitness = fitness[indices]
+            sorted_indices = np.argsort(fitness_values)
+            best_idx = sorted_indices[0]
 
             # Update best solution
-            if fitness[0] < self.best_fitness:
-                self.best_fitness = fitness[0]
-                self.best_solution = population[0].copy()
+            if fitness_values[best_idx] < self.best_fitness:
+                self.best_fitness = fitness_values[best_idx]
+                self.best_solution = population[best_idx].copy()
 
             self.fitness_history.append(self.best_fitness)
 
             # Check convergence
-            if self.best_fitness <= target_fitness:
-                if verbose:
-                    print(f"Converged at generation {self.generation}, evals: {evaluations}")
+            if fitness_values[best_idx] <= target_fitness:
+                converged = True
                 break
 
             # Update mean
             old_mean = self.mean.copy()
-            self.mean = np.sum(self.weights[:, np.newaxis] * population[:self.mu], axis=0)
+            elite_population = population[sorted_indices[:self.mu]]
+            elite_fitness = fitness_values[sorted_indices[:self.mu]]
+            self.mean = np.sum(self.weights[:, np.newaxis] * elite_population, axis=0)
 
             # Update evolution paths
             mean_diff = self.mean - old_mean
             self.ps = (1 - self.cs) * self.ps + np.sqrt(self.cs * (2 - self.cs)
                                                         * self.mu_eff) * self.invsqrtC @ mean_diff / self.sigma
 
-            hsig = np.linalg.norm(self.ps) / np.sqrt(1 - (1 - self.cs) **
-                                                     (2 * evaluations / self.lambda_)) < 1.4 + 2 / (self.n + 1)
+            hsig = np.linalg.norm(self.ps) / np.sqrt(1 - (1 - self.cs)**(2 * self.generation + 2)
+                                                     ) / np.sqrt(self.n) < 1.4 + 2 / (self.n + 1)
             self.pc = (1 - self.cc) * self.pc + hsig * np.sqrt(self.cc *
                                                                (2 - self.cc) * self.mu_eff) * mean_diff / self.sigma
 
             # Update covariance matrix
-            artmp = (population[:self.mu] - old_mean) / self.sigma
-            self.C = (1 - self.c1 - self.cmu) * self.C + self.c1 * \
-                (self.pc[:, np.newaxis] @ self.pc[np.newaxis, :] + (1 - hsig) * self.cc * (2 - self.cc) * self.C)
-            self.C += self.cmu * artmp.T @ np.diag(self.weights) @ artmp
+            artmp = (elite_population - old_mean) / self.sigma
+            self.C = (1 - self.c1 - self.cmu) * self.C + self.c1 * (np.outer(self.pc, self.pc) + (1 - hsig) * self.cc * (2 - self.cc) *
+                                                                    self.C) + self.cmu * np.sum(self.weights[:, np.newaxis, np.newaxis] * artmp[:, :, np.newaxis] * artmp[:, np.newaxis, :], axis=0)
 
             # Update step size
             self.sigma *= np.exp((self.cs / self.damps) * (np.linalg.norm(self.ps) / np.sqrt(self.n) - 1))
@@ -225,14 +206,14 @@ class CMAES:
 
             self.generation += 1
 
-            if verbose and self.generation % 50 == 0:
-                print(f"Generation {self.generation}, Best fitness: {self.best_fitness:.2e}, Sigma: {self.sigma:.2e}")
+            if verbose and self.generation % 10 == 0:
+                print(f"Generation {self.generation}: Best fitness = {self.best_fitness:.6e}")
 
         return {
-            'best_solution': self.best_solution,
             'best_fitness': self.best_fitness,
+            'best_solution': self.best_solution,
             'evaluations': evaluations,
             'generations': self.generation,
-            'fitness_history': self.fitness_history,
-            'converged': self.best_fitness <= target_fitness
+            'converged': converged,
+            'fitness_history': self.fitness_history
         }

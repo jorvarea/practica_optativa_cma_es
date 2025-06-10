@@ -2,7 +2,6 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -20,7 +19,7 @@ class ExperimentConfig:
     n_runs: int
     max_evals: int
     target_fitness: float
-    random_seeds: List[int]
+    random_seeds: list[int]
 
 
 @dataclass
@@ -36,7 +35,7 @@ class RunResult:
     generations: int
     execution_time: float
     converged: bool
-    fitness_history: List[float]
+    fitness_history: list[float]
     distance_to_optimum: float
 
 
@@ -49,87 +48,50 @@ class ExperimentFramework:
 
     def ensure_results_dir(self):
         """Create results directory if it doesn't exist."""
-        if not os.path.exists(self.results_dir):
-            os.makedirs(self.results_dir)
+        os.makedirs(self.results_dir, exist_ok=True)
 
-    def create_standard_config(self) -> List[ExperimentConfig]:
+    def create_standard_config(self) -> list[ExperimentConfig]:
         """Create standard experimental configuration for the project."""
-
-        # Standard parameters
-        samplers = ['gaussian', 'sobol', 'halton']
-        dimensions = [10, 20]  # Test both dimensions as recommended
-        n_runs = 30  # Required for statistical significance
-
-        # Functions to test
-        functions_10d = ['sphere', 'rosenbrock', 'rastrigin', 'ackley', 'schwefel',
-                         'griewank', 'levy', 'zakharov', 'michalewicz']
-        functions_2d = ['beale', 'booth', 'matyas']
-
         configs = []
+        functions = ['sphere', 'rosenbrock', 'rastrigin', 'ackley', 'schwefel',
+                     'griewank', 'levy', 'zakharov', 'michalewicz', 'beale', 'booth', 'matyas']
+        samplers = ['gaussian', 'sobol', 'halton']
+        dimensions = [10, 20]
 
-        # Generate fixed seeds for reproducibility
-        base_seed = 42
-        seeds = [base_seed + i for i in range(n_runs)]
-
-        # 10D and 20D functions
-        for dim in dimensions:
-            for sampler in samplers:
-                for func_name in functions_10d:
-                    max_evals = 10000 * dim  # Standard criterion
+        for sampler in samplers:
+            for func_name in functions:
+                for dim in dimensions:
+                    if func_name in ['beale', 'booth', 'matyas'] and dim != 2:
+                        continue
 
                     config = ExperimentConfig(
                         sampler_type=sampler,
                         function_name=func_name,
                         dimension=dim,
-                        n_runs=n_runs,
-                        max_evals=max_evals,
+                        n_runs=30,
+                        max_evals=10000 * dim,
                         target_fitness=1e-8,
-                        random_seeds=seeds
+                        random_seeds=list(range(42, 42 + 30))
                     )
                     configs.append(config)
 
-        # 2D functions (only for dimension 2)
-        for sampler in samplers:
-            for func_name in functions_2d:
-                max_evals = 10000 * 2  # 2D specific
-
-                config = ExperimentConfig(
-                    sampler_type=sampler,
-                    function_name=func_name,
-                    dimension=2,
-                    n_runs=n_runs,
-                    max_evals=max_evals,
-                    target_fitness=1e-8,
-                    random_seeds=seeds
-                )
-                configs.append(config)
-
         return configs
 
-    def run_single_experiment(self, config: ExperimentConfig) -> List[RunResult]:
+    def run_single_experiment(self, config: ExperimentConfig) -> list[RunResult]:
         """Run a single experiment configuration with multiple runs."""
 
-        print(f"Running experiment: {config.sampler_type} on {config.function_name} ({config.dimension}D)")
-        print(f"Runs: {config.n_runs}, Max evals: {config.max_evals}")
+        print(f"Running: {config.sampler_type} on {config.function_name} ({config.dimension}D)")
 
-        results = []
-
-        # Get the function
         func = get_function(config.function_name, config.dimension)
+        results = []
 
         for run_id, seed in enumerate(config.random_seeds):
             print(f"  Run {run_id + 1}/{config.n_runs} (seed: {seed})", end=" ")
 
-            # Set random seed for reproducibility
             np.random.seed(seed)
 
-            # Initialize CMA-ES
-            cma = CMAES(
-                dimension=config.dimension,
-                sampler_type=config.sampler_type
-            )
+            cma = CMAES(dimension=config.dimension, sampler_type=config.sampler_type)
 
-            # Run optimization with timing
             start_time = time.time()
 
             try:
@@ -142,12 +104,8 @@ class ExperimentFramework:
 
                 execution_time = time.time() - start_time
 
-                # Calculate distance to global optimum
-                distance = np.linalg.norm(
-                    result['best_solution'] - func.global_optimum_location
-                )
+                distance = np.linalg.norm(result['best_solution'] - func.global_optimum_location)
 
-                # Create run result
                 run_result = RunResult(
                     sampler_type=config.sampler_type,
                     function_name=config.function_name,
@@ -172,7 +130,7 @@ class ExperimentFramework:
 
         return results
 
-    def run_all_experiments(self, configs: List[ExperimentConfig] = None) -> List[RunResult]:
+    def run_all_experiments(self, configs: list[ExperimentConfig] = None) -> list[RunResult]:
         """Run all experiments and return comprehensive results."""
 
         if configs is None:
@@ -190,7 +148,6 @@ class ExperimentFramework:
             results = self.run_single_experiment(config)
             all_results.extend(results)
 
-            # Save intermediate results
             self.save_results(all_results, f"intermediate_results.json")
 
         print(f"\n🎉 Experimental suite completed!")
@@ -198,10 +155,9 @@ class ExperimentFramework:
 
         return all_results
 
-    def save_results(self, results: List[RunResult], filename: str):
+    def save_results(self, results: list[RunResult], filename: str):
         """Save results to JSON file."""
 
-        # Convert results to serializable format
         serializable_results = []
         for result in results:
             result_dict = {
@@ -226,7 +182,7 @@ class ExperimentFramework:
 
         print(f"Results saved to: {filepath}")
 
-    def load_results(self, filename: str) -> List[RunResult]:
+    def load_results(self, filename: str) -> list[RunResult]:
         """Load results from JSON file."""
 
         filepath = os.path.join(self.results_dir, filename)
@@ -253,7 +209,7 @@ class ExperimentFramework:
 
         return results
 
-    def results_to_dataframe(self, results: List[RunResult]) -> pd.DataFrame:
+    def results_to_dataframe(self, results: list[RunResult]) -> pd.DataFrame:
         """Convert results to pandas DataFrame for analysis."""
 
         data = []
@@ -275,12 +231,11 @@ class ExperimentFramework:
 
         return pd.DataFrame(data)
 
-    def get_summary_statistics(self, results: List[RunResult]) -> pd.DataFrame:
+    def get_summary_statistics(self, results: list[RunResult]) -> pd.DataFrame:
         """Generate summary statistics for each sampler-function combination."""
 
         df = self.results_to_dataframe(results)
 
-        # Group by sampler, function, and dimension
         grouped = df.groupby(['sampler_type', 'function_name', 'dimension'])
 
         summary = grouped.agg({
@@ -291,10 +246,7 @@ class ExperimentFramework:
             'distance_to_optimum': ['mean', 'std', 'min', 'max']
         }).round(6)
 
-        # Flatten column names
         summary.columns = ['_'.join(col).strip() for col in summary.columns]
-
-        # Add success rate
         summary['success_rate'] = summary['converged_sum'] / summary['converged_count']
 
         return summary
@@ -305,16 +257,15 @@ def run_quick_test():
 
     framework = ExperimentFramework()
 
-    # Quick test configuration
     quick_configs = []
     for sampler in ['gaussian', 'sobol', 'halton']:
-        for func_name in ['sphere', 'rastrigin']:  # Just 2 functions
+        for func_name in ['sphere', 'rastrigin']:
             config = ExperimentConfig(
                 sampler_type=sampler,
                 function_name=func_name,
                 dimension=10,
-                n_runs=3,  # Only 3 runs for quick test
-                max_evals=1000,  # Reduced evaluations
+                n_runs=3,
+                max_evals=1000,
                 target_fitness=1e-8,
                 random_seeds=[42, 43, 44]
             )
@@ -323,7 +274,6 @@ def run_quick_test():
     print("Running quick test...")
     results = framework.run_all_experiments(quick_configs)
 
-    # Save and show summary
     framework.save_results(results, "quick_test_results.json")
 
     summary = framework.get_summary_statistics(results)
