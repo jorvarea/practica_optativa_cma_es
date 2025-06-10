@@ -22,68 +22,61 @@ from visualizations import VisualizationGenerator
 def main():
     """Generate all visualizations for the CMA-ES project."""
 
-    print("🎨 CMA-ES Project - Comprehensive Visualization Generation")
-    print("=" * 60)
+    print("Proyecto CMA-ES - Generación Completa de Visualizaciones")
+    print("-" * 60)
 
     # Check if we have results to work with
     results_file = "quick_test_results.json"
     if not Path("results", results_file).exists():
-        print(f"❌ Results file results/{results_file} not found.")
-        print("Please run test_framework.py first to generate test data.")
+        print(f"Archivo de resultados results/{results_file} no encontrado.")
+        print("Por favor ejecuta test_framework.py primero para generar datos de prueba.")
         return
 
-    try:
-        # Load experimental results
-        print("📊 Loading experimental results...")
-        framework = ExperimentFramework()
-        results = framework.load_results(results_file)
-        print(f"✅ Loaded {len(results)} experimental results")
+    # Load experimental results
+    print("Cargando resultados experimentales...")
+    framework = ExperimentFramework()
+    results = framework.load_results(results_file)
+    print(f"Cargados {len(results)} resultados experimentales")
 
-        # Perform statistical analysis
-        print("\n📈 Performing statistical analysis...")
-        analyzer = StatisticalAnalyzer()
-        analysis_results = analyzer.comprehensive_analysis(results)
+    # Perform statistical analysis
+    print("Realizando análisis estadístico...")
+    analyzer = StatisticalAnalyzer()
+    analysis_results = analyzer.comprehensive_analysis(results)
 
-        print(f"✅ Statistical analysis completed:")
-        print(f"  - Normality tests: {len(analysis_results['normality_tests'])}")
-        print(f"  - Pairwise comparisons: {len(analysis_results['pairwise_comparisons'])}")
-        if 'multiple_comparisons' in analysis_results:
-            print(f"  - Multiple comparisons: {len(analysis_results['multiple_comparisons'])}")
+    print(f"Análisis estadístico completado:")
+    print(f"  - Tests de normalidad: {len(analysis_results['normality_tests'])}")
+    print(f"  - Comparaciones pareadas: {len(analysis_results['pairwise_comparisons'])}")
+    if 'multiple_comparisons' in analysis_results:
+        print(f"  - Comparaciones múltiples: {len(analysis_results['multiple_comparisons'])}")
 
-        # Generate visualizations
-        print("\n🎨 Generating comprehensive visualizations...")
-        viz_gen = VisualizationGenerator(output_dir="plots")
+    # Generate visualizations
+    print("Generando visualizaciones completas...")
+    viz_gen = VisualizationGenerator(output_dir="plots")
 
-        # Generate all plots
-        viz_gen.generate_all_visualizations(results, analysis_results)
+    # Generate all plots
+    viz_gen.generate_all_visualizations(results, analysis_results)
 
-        # Summary
-        print("\n" + "=" * 60)
-        print("✅ VISUALIZATION GENERATION COMPLETED SUCCESSFULLY!")
-        print(f"📁 All plots saved to: plots/")
-        print("\n📋 Generated visualizations:")
-        print("  1. Convergence curves for key functions (Sphere, Rastrigin, Ackley)")
-        print("  2. Performance boxplots (Best Fitness, Evaluations, Execution Time)")
-        print("  3. Performance heatmaps (Best Fitness, Evaluations)")
-        print("  4. Statistical significance visualization")
-        print("  5. Comprehensive sampler comparison summary")
+    # Summary
+    print("-" * 60)
+    print("GENERACIÓN DE VISUALIZACIONES COMPLETADA EXITOSAMENTE!")
+    print(f"Todos los gráficos guardados en: plots/")
+    print("Visualizaciones generadas:")
+    print("  1. Curvas de convergencia para funciones clave (Sphere, Rastrigin, Ackley)")
+    print("  2. Boxplots de rendimiento (Mejor Fitness, Evaluaciones, Tiempo de Ejecución)")
+    print("  3. Mapas de calor de rendimiento (Mejor Fitness, Evaluaciones)")
+    print("  4. Visualización de significancia estadística")
+    print("  5. Resumen completo de comparación de muestreadores")
 
-        # List all generated files
-        plots_dir = Path("plots")
-        if plots_dir.exists():
-            plot_files = list(plots_dir.glob("*.png"))
-            print(f"\n📄 Total plots generated: {len(plot_files)}")
-            for plot_file in sorted(plot_files):
-                print(f"  - {plot_file.name}")
+    # List all generated files
+    plots_dir = Path("plots")
+    if plots_dir.exists():
+        plot_files = list(plots_dir.glob("*.png"))
+        print(f"Total de gráficos generados: {len(plot_files)}")
+        for plot_file in sorted(plot_files):
+            print(f"  - {plot_file.name}")
 
-    except Exception as e:
-        print(f"❌ Error generating visualizations: {e}")
-        import traceback
-        traceback.print_exc()
-        return
-
-    print("\n🎯 These visualizations are ready for inclusion in your technical report!")
-    print("   Each plot is saved at 300 DPI for high-quality printing.")
+    print("Estas visualizaciones están listas para incluir en tu reporte técnico!")
+    print("   Cada gráfico está guardado a 300 DPI para impresión de alta calidad.")
 
 
 if __name__ == "__main__":

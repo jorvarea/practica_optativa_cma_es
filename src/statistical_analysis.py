@@ -1,6 +1,5 @@
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -49,7 +48,7 @@ class StatisticalAnalyzer:
                 p_value=np.nan,
                 significant=False,
                 alpha=self.alpha,
-                interpretation="Insufficient data for normality test"
+                interpretation="Muestra muy pequeña para test de normalidad"
             )
 
         if test_name.lower() == "shapiro-wilk":
@@ -66,9 +65,9 @@ class StatisticalAnalyzer:
         significant = p_value < self.alpha
 
         if significant:
-            interpretation = f"Data is NOT normally distributed (p={p_value:.4f} < α={self.alpha})"
+            interpretation = f"Los datos NO siguen distribución normal (p={p_value:.4f})"
         else:
-            interpretation = f"Data appears normally distributed (p={p_value:.4f} ≥ α={self.alpha})"
+            interpretation = f"Los datos siguen distribución normal (p={p_value:.4f})"
 
         return StatisticalTest(
             test_name=test_name,
@@ -235,9 +234,7 @@ class StatisticalAnalyzer:
         else:
             raise ValueError(f"Unknown effect size method: {method}")
 
-    def compare_samplers_on_function(self, results: List[RunResult],
-                                     function_name: str, dimension: int,
-                                     metric: str = "best_fitness") -> List[ComparisonResult]:
+    def compare_samplers_on_function(self, results: list[RunResult], function_name: str, dimension: int, metric: str = "best_fitness") -> list[ComparisonResult]:
         """Compare all sampler pairs on a specific function."""
 
         # Filter results for this function and dimension
@@ -313,143 +310,99 @@ class StatisticalAnalyzer:
 
         return comparisons
 
-    def comprehensive_analysis(self, results: List[RunResult]) -> Dict[str, Any]:
+    def comprehensive_analysis(self, results: list[RunResult]) -> dict:
         """Run comprehensive statistical analysis on all results."""
 
-        print("Running comprehensive statistical analysis...")
-        print("=" * 50)
+        print("Ejecutando análisis estadístico comprehensivo...")
+        print("-" * 50)
 
-        analysis_results = {
-            'normality_tests': {},
-            'pairwise_comparisons': [],
-            'kruskal_wallis_tests': {},
-            'summary_statistics': {}
-        }
-
-        # Convert to DataFrame for easier manipulation
         framework = ExperimentFramework()
         df = framework.results_to_dataframe(results)
 
-        if df.empty:
-            print("No results to analyze")
-            return analysis_results
+        analysis_results = {
+            'normality_tests': [],
+            'pairwise_comparisons': [],
+            'multiple_comparisons': []
+        }
 
-        # 1. Normality tests
-        print("\n1. Testing normality of distributions...")
-        for (func, dim), group in df.groupby(['function_name', 'dimension']):
-            for sampler in group['sampler_type'].unique():
-                sampler_data = group[group['sampler_type'] == sampler]['best_fitness'].values
+        functions = df['function_name'].unique()
+        dimensions = df['dimension'].unique()
+        samplers = df['sampler_type'].unique()
 
-                if len(sampler_data) >= 3:
-                    normality_test = self.test_normality(sampler_data)
-                    key = f"{sampler}_{func}_{dim}D"
-                    analysis_results['normality_tests'][key] = normality_test
-                    print(f"  {key}: {normality_test.interpretation}")
+        for func in functions:
+            for dim in dimensions:
+                func_dim_data = df[(df['function_name'] == func) & (df['dimension'] == dim)]
 
-        # 2. Pairwise comparisons
-        print("\n2. Pairwise comparisons between samplers...")
-        metrics = ['best_fitness', 'evaluations', 'execution_time']
+                if func_dim_data.empty:
+                    continue
 
-        for (func, dim), group in df.groupby(['function_name', 'dimension']):
-            for metric in metrics:
-                comparisons = self.compare_samplers_on_function(results, func, dim, metric)
-                analysis_results['pairwise_comparisons'].extend(comparisons)
-
-                for comp in comparisons:
-                    if comp.test_result.significant:
-                        print(f"  {func} ({dim}D) - {metric}: {comp.winner} significantly better than "
-                              f"{comp.sampler1 if comp.winner != comp.sampler1 else comp.sampler2} "
-                              f"(p={comp.test_result.p_value:.4f})")
-
-        # 3. Kruskal-Wallis tests (multiple group comparisons)
-        print("\n3. Multi-group comparisons (Kruskal-Wallis)...")
-        for (func, dim), group in df.groupby(['function_name', 'dimension']):
-            samplers = group['sampler_type'].unique()
-            if len(samplers) >= 3:
-                # Group data by sampler
-                groups = []
                 for sampler in samplers:
-                    sampler_data = group[group['sampler_type'] == sampler]['best_fitness'].values
-                    groups.append(sampler_data)
+                    sampler_data = func_dim_data[func_dim_data['sampler_type'] == sampler]['best_fitness'].values
 
-                kw_test = self.kruskal_wallis_test(*groups)
-                key = f"{func}_{dim}D_best_fitness"
-                analysis_results['kruskal_wallis_tests'][key] = kw_test
-                print(f"  {func} ({dim}D): {kw_test.interpretation}")
+                    if len(sampler_data) > 0:
+                        normality_test = self.test_normality(sampler_data)
+                        analysis_results['normality_tests'].append({
+                            'function': func,
+                            'dimension': dim,
+                            'sampler': sampler,
+                            'test': normality_test
+                        })
 
-        # 4. Summary statistics
-        analysis_results['summary_statistics'] = framework.get_summary_statistics(results)
+                for metric in ['best_fitness']:
+                    comparisons = self.compare_samplers_on_function(results, func, dim, metric)
+                    analysis_results['pairwise_comparisons'].extend(comparisons)
 
-        print("\n✅ Statistical analysis completed!")
+                sampler_groups = []
+                for sampler in samplers:
+                    sampler_data = func_dim_data[func_dim_data['sampler_type'] == sampler]['best_fitness'].values
+                    if len(sampler_data) > 0:
+                        sampler_groups.append(sampler_data)
+
+                if len(sampler_groups) >= 2:
+                    kruskal_test = self.kruskal_wallis_test(*sampler_groups)
+                    analysis_results['multiple_comparisons'].append({
+                        'function': func,
+                        'dimension': dim,
+                        'test': kruskal_test
+                    })
+
+                    print(f"  {func} ({dim}D): {kruskal_test.interpretation}")
+
         return analysis_results
 
-    def generate_statistical_report(self, analysis_results: Dict[str, Any]) -> str:
+    def generate_statistical_report(self, analysis_results: dict) -> str:
         """Generate a formatted statistical report."""
 
         report = []
-        report.append("# Statistical Analysis Report")
-        report.append("=" * 50)
+        report.append("-" * 60)
+        report.append("REPORTE DE ANÁLISIS ESTADÍSTICO")
+        report.append("-" * 60)
 
-        # Normality tests
-        report.append("\n## Normality Tests")
-        report.append("Testing whether performance distributions are normal:")
+        report.append(f"TESTS DE NORMALIDAD ({len(analysis_results['normality_tests'])} tests)")
+        for test_data in analysis_results['normality_tests']:
+            test = test_data['test']
+            report.append(f"  {test_data['function']} ({test_data['dimension']}D) - {test_data['sampler']}:")
+            report.append(f"    {test.interpretation}")
 
-        normal_count = 0
-        total_count = 0
-        for key, test in analysis_results['normality_tests'].items():
-            report.append(f"- {key}: {test.interpretation}")
-            if not test.significant:
-                normal_count += 1
-            total_count += 1
-
-        if total_count > 0:
-            report.append(f"\nResult: {normal_count}/{total_count} distributions appear normal.")
-            report.append("Non-parametric tests are recommended for robust analysis.")
-
-        # Significant comparisons
-        report.append("\n## Significant Differences Between Samplers")
-
-        significant_comparisons = [comp for comp in analysis_results['pairwise_comparisons']
-                                   if comp.test_result.significant]
+        report.append(f"COMPARACIONES PAREADAS ({len(analysis_results['pairwise_comparisons'])} comparaciones)")
+        significant_comparisons = [
+            comp for comp in analysis_results['pairwise_comparisons'] if comp.test_result.significant]
 
         if significant_comparisons:
+            report.append(f"  Encontradas {len(significant_comparisons)} diferencias significativas:")
             for comp in significant_comparisons:
-                other_sampler = comp.sampler1 if comp.winner != comp.sampler1 else comp.sampler2
-                report.append(f"- {comp.function_name} ({comp.dimension}D) - {comp.metric}: "
-                              f"**{comp.winner}** significantly better than {other_sampler} "
-                              f"(p={comp.test_result.p_value:.4f}, effect size={comp.effect_size:.3f})")
+                report.append(f"    {comp.function_name} ({comp.dimension}D): {comp.sampler1} vs {comp.sampler2}")
+                report.append(f"      Ganador: {comp.winner} (p={comp.test_result.p_value:.4f})")
         else:
-            report.append("No statistically significant differences found.")
+            report.append("  No se encontraron diferencias significativas entre muestreadores.")
 
-        # Multi-group tests
-        report.append("\n## Multi-Group Comparisons")
-        significant_kw = [key for key, test in analysis_results['kruskal_wallis_tests'].items()
-                          if test.significant]
+        report.append(
+            f"COMPARACIONES DE MÚLTIPLES GRUPOS ({len(analysis_results.get('multiple_comparisons', []))} tests)")
+        for test_data in analysis_results.get('multiple_comparisons', []):
+            test = test_data['test']
+            report.append(f"  {test_data['function']} ({test_data['dimension']}D): {test.interpretation}")
 
-        if significant_kw:
-            report.append("Functions with significant differences between all samplers:")
-            for key in significant_kw:
-                test = analysis_results['kruskal_wallis_tests'][key]
-                report.append(f"- {key}: p={test.p_value:.4f}")
-        else:
-            report.append("No significant differences found in multi-group comparisons.")
-
-        report.append("\n## Conclusions")
-        report.append("Based on statistical analysis:")
-
-        # Count wins per sampler
-        sampler_wins = {}
-        for comp in significant_comparisons:
-            if comp.winner not in sampler_wins:
-                sampler_wins[comp.winner] = 0
-            sampler_wins[comp.winner] += 1
-
-        if sampler_wins:
-            sorted_samplers = sorted(sampler_wins.items(), key=lambda x: x[1], reverse=True)
-            report.append(f"- **{sorted_samplers[0][0]}** shows best overall performance "
-                          f"({sorted_samplers[0][1]} significant wins)")
-            for sampler, wins in sorted_samplers[1:]:
-                report.append(f"- {sampler}: {wins} significant wins")
+        report.append("-" * 60)
 
         return "\n".join(report)
 
@@ -457,26 +410,25 @@ class StatisticalAnalyzer:
 def run_statistical_analysis_test():
     """Test the statistical analysis with quick test data."""
 
-    print("Testing Statistical Analysis Module")
-    print("=" * 50)
+    print("Probando Módulo de Análisis Estadístico")
+    print("-" * 50)
 
-    # Load quick test results
     framework = ExperimentFramework()
+    results = framework.load_results("quick_test_results.json")
+    print(f"Cargados {len(results)} resultados de prueba rápida")
 
-    try:
-        results = framework.load_results("quick_test_results.json")
-        print(f"Loaded {len(results)} results from quick test")
+    analyzer = StatisticalAnalyzer()
+    analysis_results = analyzer.comprehensive_analysis(results)
 
-        # Run statistical analysis
-        analyzer = StatisticalAnalyzer()
-        analysis = analyzer.comprehensive_analysis(results)
+    print(f"Análisis completado:")
+    print(f"  - Tests de normalidad: {len(analysis_results['normality_tests'])}")
+    print(f"  - Comparaciones pareadas: {len(analysis_results['pairwise_comparisons'])}")
+    print(f"  - Comparaciones múltiples: {len(analysis_results.get('multiple_comparisons', []))}")
 
-        print("\n✅ Statistical analysis test completed!")
-        return analysis
+    report = analyzer.generate_statistical_report(analysis_results)
+    print("Reporte estadístico generado:")
+    print(report[:500] + "..." if len(report) > 500 else report)
 
-    except FileNotFoundError:
-        print("❌ No quick test results found. Run test_framework.py first.")
-        return None
-    except Exception as e:
-        print(f"❌ Statistical analysis failed: {e}")
-        return None
+    print("Prueba de análisis estadístico completada exitosamente!")
+
+    return analysis_results

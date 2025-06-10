@@ -80,13 +80,13 @@ class ExperimentFramework:
     def run_single_experiment(self, config: ExperimentConfig) -> list[RunResult]:
         """Run a single experiment configuration with multiple runs."""
 
-        print(f"Running: {config.sampler_type} on {config.function_name} ({config.dimension}D)")
+        print(f"Ejecutando: {config.sampler_type} en {config.function_name} ({config.dimension}D)")
 
         func = get_function(config.function_name, config.dimension)
         results = []
 
         for run_id, seed in enumerate(config.random_seeds):
-            print(f"  Run {run_id + 1}/{config.n_runs} (seed: {seed})", end=" ")
+            print(f"  Ejecución {run_id + 1}/{config.n_runs} (semilla: {seed})", end=" ")
 
             np.random.seed(seed)
 
@@ -94,39 +94,34 @@ class ExperimentFramework:
 
             start_time = time.time()
 
-            try:
-                result = cma.optimize(
-                    objective_func=func,
-                    max_evals=config.max_evals,
-                    target_fitness=config.target_fitness,
-                    verbose=False
-                )
+            result = cma.optimize(
+                objective_func=func,
+                max_evals=config.max_evals,
+                target_fitness=config.target_fitness,
+                verbose=False
+            )
 
-                execution_time = time.time() - start_time
+            execution_time = time.time() - start_time
 
-                distance = np.linalg.norm(result['best_solution'] - func.global_optimum_location)
+            distance = np.linalg.norm(result['best_solution'] - func.global_optimum_location)
 
-                run_result = RunResult(
-                    sampler_type=config.sampler_type,
-                    function_name=config.function_name,
-                    dimension=config.dimension,
-                    run_id=run_id,
-                    seed=seed,
-                    best_fitness=result['best_fitness'],
-                    evaluations=result['evaluations'],
-                    generations=result['generations'],
-                    execution_time=execution_time,
-                    converged=result['converged'],
-                    fitness_history=result['fitness_history'],
-                    distance_to_optimum=distance
-                )
+            run_result = RunResult(
+                sampler_type=config.sampler_type,
+                function_name=config.function_name,
+                dimension=config.dimension,
+                run_id=run_id,
+                seed=seed,
+                best_fitness=result['best_fitness'],
+                evaluations=result['evaluations'],
+                generations=result['generations'],
+                execution_time=execution_time,
+                converged=result['converged'],
+                fitness_history=result['fitness_history'],
+                distance_to_optimum=distance
+            )
 
-                results.append(run_result)
-                print(f"✅ {result['best_fitness']:.2e} ({result['evaluations']} evals)")
-
-            except Exception as e:
-                print(f"❌ Failed: {e}")
-                continue
+            results.append(run_result)
+            print(f"OK {result['best_fitness']:.2e} ({result['evaluations']} evals)")
 
         return results
 
@@ -136,22 +131,22 @@ class ExperimentFramework:
         if configs is None:
             configs = self.create_standard_config()
 
-        print(f"Starting experimental suite: {len(configs)} configurations")
-        print(f"Total estimated runs: {sum(c.n_runs for c in configs)}")
-        print("=" * 60)
+        print(f"Iniciando suite experimental: {len(configs)} configuraciones")
+        print(f"Total de ejecuciones estimadas: {sum(c.n_runs for c in configs)}")
+        print("-" * 60)
 
         all_results = []
 
         for i, config in enumerate(configs):
-            print(f"\nConfiguration {i + 1}/{len(configs)}:")
+            print(f"Configuración {i + 1}/{len(configs)}:")
 
             results = self.run_single_experiment(config)
             all_results.extend(results)
 
             self.save_results(all_results, f"intermediate_results.json")
 
-        print(f"\n🎉 Experimental suite completed!")
-        print(f"Total successful runs: {len(all_results)}")
+        print(f"Suite experimental completado!")
+        print(f"Total de ejecuciones exitosas: {len(all_results)}")
 
         return all_results
 
@@ -180,7 +175,7 @@ class ExperimentFramework:
         with open(filepath, 'w') as f:
             json.dump(serializable_results, f, indent=2)
 
-        print(f"Results saved to: {filepath}")
+        print(f"Resultados guardados en: {filepath}")
 
     def load_results(self, filename: str) -> list[RunResult]:
         """Load results from JSON file."""
@@ -271,13 +266,13 @@ def run_quick_test():
             )
             quick_configs.append(config)
 
-    print("Running quick test...")
+    print("Ejecutando prueba rápida...")
     results = framework.run_all_experiments(quick_configs)
 
     framework.save_results(results, "quick_test_results.json")
 
     summary = framework.get_summary_statistics(results)
-    print("\nQuick Test Summary:")
+    print("Resumen de prueba rápida:")
     print(summary[['best_fitness_mean', 'evaluations_mean', 'success_rate']])
 
     return results

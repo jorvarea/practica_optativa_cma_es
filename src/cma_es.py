@@ -3,22 +3,11 @@ from scipy.stats import qmc
 
 
 class CMAES:
-    """CMA-ES implementation with pluggable sampling strategies."""
-
     def __init__(self,
                  dimension: int,
                  sigma: float = 0.5,
                  population_size: int = None,
                  sampler_type: str = 'gaussian'):
-        """
-        Initialize CMA-ES algorithm.
-
-        Args:
-            dimension: Problem dimension
-            sigma: Initial step size
-            population_size: Population size (lambda)
-            sampler_type: Type of sampler ('gaussian', 'sobol', 'halton')
-        """
         self.n = dimension
         self.sigma = sigma
 
@@ -66,7 +55,6 @@ class CMAES:
         self.fitness_history = []
 
     def _update_eigensystem(self):
-        """Update eigendecomposition of covariance matrix."""
         if self.generation % self.n == 0:  # Update every n generations
             self.C = np.triu(self.C) + np.triu(self.C, 1).T  # Ensure symmetry
             self.D, self.B = np.linalg.eigh(self.C)
@@ -74,7 +62,6 @@ class CMAES:
             self.invsqrtC = self.B @ np.diag(1 / self.D) @ self.B.T
 
     def _sample_population(self) -> np.ndarray:
-        """Sample new population using specified sampling strategy."""
         if self.sampler_type == 'gaussian':
             return self._sample_gaussian()
         elif self.sampler_type == 'sobol':
@@ -90,7 +77,6 @@ class CMAES:
         return self.mean + self.sigma * (z @ (self.B * self.D).T)
 
     def _sample_sobol(self) -> np.ndarray:
-        """Sobol sequence sampling with Box-Muller transformation."""
         # Generate uniform samples from Sobol sequence
         uniform_samples = self.sobol_sampler.random(self.lambda_)
 
@@ -101,7 +87,6 @@ class CMAES:
         return self.mean + self.sigma * (z @ (self.B * self.D).T)
 
     def _sample_halton(self) -> np.ndarray:
-        """Halton sequence sampling with Box-Muller transformation."""
         # Generate uniform samples from Halton sequence
         uniform_samples = self.halton_sampler.random(self.lambda_)
 
@@ -112,7 +97,6 @@ class CMAES:
         return self.mean + self.sigma * (z @ (self.B * self.D).T)
 
     def _box_muller_transform(self, uniform_samples: np.ndarray) -> np.ndarray:
-        """Transform uniform samples to Gaussian using Box-Muller method."""
         n_samples, dim = uniform_samples.shape
 
         if dim % 2 == 1:
@@ -130,26 +114,7 @@ class CMAES:
 
         return gaussian_samples[:, :self.n]
 
-    def optimize(self,
-                 objective_func: Callable[[np.ndarray], float],
-                 max_evals: int = None,
-                 target_fitness: float = 1e-8,
-                 verbose: bool = False) -> dict:
-        """
-        Run CMA-ES optimization.
-
-        Args:
-            objective_func: Function to minimize
-            max_evals: Maximum number of evaluations
-            target_fitness: Target fitness value
-            verbose: Print progress
-
-        Returns:
-            Dictionary with optimization results
-        """
-        if max_evals is None:
-            max_evals = 10000 * self.n
-
+    def optimize(self, objective_func, max_evals: int = None, target_fitness: float = 1e-8, verbose: bool = False) -> dict:
         evaluations = 0
         converged = False
 
@@ -207,7 +172,7 @@ class CMAES:
             self.generation += 1
 
             if verbose and self.generation % 10 == 0:
-                print(f"Generation {self.generation}: Best fitness = {self.best_fitness:.6e}")
+                print(f"Generación {self.generation} - Mejor fitness: {self.best_fitness:.6e}")
 
         return {
             'best_fitness': self.best_fitness,

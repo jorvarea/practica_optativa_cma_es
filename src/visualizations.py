@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,17 +33,14 @@ class VisualizationGenerator:
             'figure.dpi': 100
         })
 
-    def plot_convergence_curves(self, results: List[RunResult],
-                                function_name: str, dimension: int,
-                                save_plot: bool = True) -> None:
+    def plot_convergence_curves(self, results: list[RunResult], function_name: str, dimension: int, save_plot: bool = True) -> None:
         """Plot convergence curves for all samplers on a specific function."""
 
         # Filter results for this function and dimension
-        filtered_results = [r for r in results
-                            if r.function_name == function_name and r.dimension == dimension]
+        filtered_results = [r for r in results if r.function_name == function_name and r.dimension == dimension]
 
         if not filtered_results:
-            print(f"No results found for {function_name} ({dimension}D)")
+            print(f"No hay resultados para {function_name} ({dimension}D)")
             return
 
         plt.figure(figsize=(12, 8))
@@ -98,20 +94,18 @@ class VisualizationGenerator:
             filename = f"convergence_{function_name}_{dimension}D.png"
             filepath = self.output_dir / filename
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
-            print(f"Saved convergence plot: {filepath}")
+            print(f"Gráfico de convergencia guardado: {filepath}")
 
         plt.close()  # Close figure to free memory
 
-    def plot_performance_boxplots(self, results: List[RunResult],
-                                  metric: str = "best_fitness",
-                                  save_plot: bool = True) -> None:
+    def plot_performance_boxplots(self, results: list[RunResult], metric: str = "best_fitness", save_plot: bool = True) -> None:
         """Plot boxplots comparing sampler performance across all functions."""
 
         framework = ExperimentFramework()
         df = framework.results_to_dataframe(results)
 
         if df.empty:
-            print("No results to plot")
+            print("No hay resultados para graficar")
             return
 
         # Get unique functions and dimensions
@@ -170,23 +164,21 @@ class VisualizationGenerator:
         plt.tight_layout()
 
         if save_plot:
-            filename = f"boxplots_{metric}.png"
+            filename = f"boxplot_{metric}.png"
             filepath = self.output_dir / filename
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
-            print(f"Saved boxplot: {filepath}")
+            print(f"Boxplot guardado: {filepath}")
 
         plt.close()
 
-    def plot_performance_heatmap(self, results: List[RunResult],
-                                 metric: str = "best_fitness",
-                                 save_plot: bool = True) -> None:
-        """Plot heatmap of average performance across functions and samplers."""
+    def plot_performance_heatmap(self, results: list[RunResult], metric: str = "best_fitness", save_plot: bool = True) -> None:
+        """Plot heatmap of performance across functions and samplers."""
 
         framework = ExperimentFramework()
         df = framework.results_to_dataframe(results)
 
         if df.empty:
-            print("No results to plot")
+            print("No hay resultados para graficar")
             return
 
         # Create separate heatmaps for each dimension
@@ -227,31 +219,29 @@ class VisualizationGenerator:
             plt.yticks(rotation=0)
 
             if save_plot:
-                filename = f"heatmap_{metric}_{dim}D.png"
+                filename = f"heatmap_{metric}.png"
                 filepath = self.output_dir / filename
                 plt.savefig(filepath, dpi=300, bbox_inches='tight')
-                print(f"Saved heatmap: {filepath}")
+                print(f"Mapa de calor guardado: {filepath}")
 
             plt.close()
 
-    def plot_statistical_significance(self, analysis_results: Dict[str, Any],
-                                      save_plot: bool = True) -> None:
-        """Plot statistical significance results."""
+    def plot_statistical_significance(self, analysis_results: dict, save_plot: bool = True) -> None:
+        """Plot statistical significance between samplers."""
 
         if 'pairwise_comparisons' not in analysis_results:
-            print("No pairwise comparisons found in analysis results")
+            print("No se encontraron comparaciones pareadas en los resultados del análisis")
             return
 
-        significant_comparisons = [comp for comp in analysis_results['pairwise_comparisons']
-                                   if comp.test_result.significant]
+        comparisons = analysis_results['pairwise_comparisons']
 
-        if not significant_comparisons:
-            print("No significant differences found to plot")
+        if not comparisons:
+            print("No se encontraron diferencias significativas para graficar")
             return
 
         # Prepare data for visualization
-        functions = list(set(comp.function_name for comp in significant_comparisons))
-        dimensions = list(set(comp.dimension for comp in significant_comparisons))
+        functions = list(set(comp.function_name for comp in comparisons))
+        dimensions = list(set(comp.dimension for comp in comparisons))
 
         fig, axes = plt.subplots(len(dimensions), 1, figsize=(12, 6 * len(dimensions)))
         if len(dimensions) == 1:
@@ -261,7 +251,7 @@ class VisualizationGenerator:
             ax = axes[dim_idx]
 
             # Filter comparisons for this dimension
-            dim_comparisons = [comp for comp in significant_comparisons
+            dim_comparisons = [comp for comp in comparisons
                                if comp.dimension == dim]
 
             if not dim_comparisons:
@@ -316,19 +306,18 @@ class VisualizationGenerator:
             filename = "statistical_significance.png"
             filepath = self.output_dir / filename
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
-            print(f"Saved significance plot: {filepath}")
+            print(f"Gráfico de significancia guardado: {filepath}")
 
         plt.close()
 
-    def plot_sampler_comparison_summary(self, results: List[RunResult],
-                                        save_plot: bool = True) -> None:
+    def plot_sampler_comparison_summary(self, results: list[RunResult], save_plot: bool = True) -> None:
         """Plot comprehensive summary of sampler performance."""
 
         framework = ExperimentFramework()
         summary_stats = framework.get_summary_statistics(results)
 
         if summary_stats.empty:
-            print("No summary statistics to plot")
+            print("No hay estadísticas resumidas para graficar")
             return
 
         # Reset index to make it easier to work with
@@ -384,32 +373,31 @@ class VisualizationGenerator:
             filename = "sampler_comparison_summary.png"
             filepath = self.output_dir / filename
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
-            print(f"Saved summary plot: {filepath}")
+            print(f"Gráfico resumen guardado: {filepath}")
 
         plt.close()
 
-    def generate_all_visualizations(self, results: List[RunResult],
-                                    analysis_results: Dict[str, Any] = None) -> None:
+    def generate_all_visualizations(self, results: list[RunResult], analysis_results: dict = None) -> None:
         """Generate all visualizations for the project."""
 
-        print("Generating comprehensive visualizations...")
-        print("=" * 50)
+        print("Generando visualizaciones completas...")
+        print("-" * 50)
 
         # Get unique functions and dimensions
         framework = ExperimentFramework()
         df = framework.results_to_dataframe(results)
 
         if df.empty:
-            print("No results to visualize")
+            print("No hay resultados para visualizar")
             return
 
         functions = df['function_name'].unique()
         dimensions = sorted(df['dimension'].unique())
 
-        print(f"Found {len(functions)} functions and {len(dimensions)} dimensions")
+        print(f"Encontradas {len(functions)} funciones y {len(dimensions)} dimensiones")
 
         # 1. Convergence curves (for selected functions)
-        print("\n1. Generating convergence curves...")
+        print("1. Generando curvas de convergencia...")
         key_functions = ['sphere', 'rastrigin', 'ackley']  # Representative functions
         for func in key_functions:
             if func in functions:
@@ -417,57 +405,49 @@ class VisualizationGenerator:
                     self.plot_convergence_curves(results, func, dim, save_plot=True)
 
         # 2. Performance boxplots
-        print("\n2. Generating performance boxplots...")
+        print("2. Generando boxplots de rendimiento...")
         for metric in ['best_fitness', 'evaluations', 'execution_time']:
             self.plot_performance_boxplots(results, metric, save_plot=True)
 
         # 3. Performance heatmaps
-        print("\n3. Generating performance heatmaps...")
+        print("3. Generando mapas de calor de rendimiento...")
         for metric in ['best_fitness', 'evaluations']:
             self.plot_performance_heatmap(results, metric, save_plot=True)
 
         # 4. Statistical significance (if available)
         if analysis_results and 'pairwise_comparisons' in analysis_results:
-            print("\n4. Generating statistical significance plots...")
+            print("4. Generando gráficos de significancia estadística...")
             self.plot_statistical_significance(analysis_results, save_plot=True)
 
         # 5. Overall summary
-        print("\n5. Generating sampler comparison summary...")
+        print("5. Generando resumen de comparación de muestreadores...")
         self.plot_sampler_comparison_summary(results, save_plot=True)
 
-        print(f"\n✅ All visualizations saved to: {self.output_dir}")
+        print(f"Todas las visualizaciones guardadas en: {self.output_dir}")
 
 
 def test_visualizations():
     """Test visualization generation with quick test data."""
 
-    print("Testing Visualization Generation")
-    print("=" * 50)
+    print("Probando Generación de Visualizaciones")
+    print("-" * 50)
 
-    try:
-        # Load quick test results
-        framework = ExperimentFramework()
-        results = framework.load_results("quick_test_results.json")
-        print(f"Loaded {len(results)} results from quick test")
+    # Load quick test results
+    framework = ExperimentFramework()
+    results = framework.load_results("quick_test_results.json")
+    print(f"Cargados {len(results)} resultados de prueba rápida")
 
-        # Generate visualizations
-        viz_gen = VisualizationGenerator()
+    # Generate visualizations
+    viz_gen = VisualizationGenerator()
 
-        # Test individual plots
-        print("\nTesting convergence curves...")
-        viz_gen.plot_convergence_curves(results, 'sphere', 10, save_plot=True)
+    # Test individual plots
+    print("Probando curvas de convergencia...")
+    viz_gen.plot_convergence_curves(results, 'sphere', 10, save_plot=True)
 
-        print("\nTesting boxplots...")
-        viz_gen.plot_performance_boxplots(results, 'best_fitness', save_plot=True)
+    print("Probando boxplots...")
+    viz_gen.plot_performance_boxplots(results, 'best_fitness', save_plot=True)
 
-        print("\nTesting heatmap...")
-        viz_gen.plot_performance_heatmap(results, 'best_fitness', save_plot=True)
+    print("Probando mapa de calor...")
+    viz_gen.plot_performance_heatmap(results, 'best_fitness', save_plot=True)
 
-        print("\n✅ Visualization test completed successfully!")
-
-    except FileNotFoundError:
-        print("❌ No quick test results found. Run test_framework.py first.")
-    except Exception as e:
-        print(f"❌ Visualization test failed: {e}")
-        import traceback
-        traceback.print_exc()
+    print("Prueba de visualización completada exitosamente!")
